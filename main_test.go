@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -45,7 +44,7 @@ func TestMain(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			tempFile, err := ioutil.TempFile("", "")
+			tempFile, err := os.CreateTemp("", "")
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -67,11 +66,14 @@ func TestMain(t *testing.T) {
 
 			os.Stdout = old
 
-			tempFile.Seek(0, 0)
+			_, err = tempFile.Seek(0, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			b, err := io.ReadAll(tempFile)
 			if err != nil {
-				fmt.Println(err)
+				t.Fatal(err)
 			}
 
 			var words []string
