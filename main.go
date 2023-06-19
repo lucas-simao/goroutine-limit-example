@@ -18,31 +18,29 @@ type People struct {
 }
 
 var (
-	channelLimit      int = 50
-	channelReadPeople     = make(chan People, channelLimit)
+	channelLimit      int = 100
+	channelReadPeople     = make(chan People)
 	currentLimit      int32
 )
 
 func init() {
 	go func() {
-		for v := range channelReadPeople {
-		GOLOOP:
+		for {
 			if int(currentLimit) < channelLimit {
-				goto BEGIN
-			} else {
-				goto GOLOOP
+				var v = <-channelReadPeople
+				go process(v)
 			}
-		BEGIN:
-			atomic.AddInt32(&currentLimit, 1)
-			go process(v)
 		}
 	}()
 }
 
 func process(p People) {
-	fmt.Printf("People is: %+v: Total goroutine: %v Size limit: %v\n", p, runtime.NumGoroutine(), currentLimit)
-	atomic.AddInt32(&currentLimit, -1)
-	p.wg.Done()
+	atomic.AddInt32(&currentLimit, 1)
+	defer func() {
+		atomic.AddInt32(&currentLimit, -1)
+		p.wg.Done()
+	}()
+	fmt.Printf("People is: %+v: Total goroutine: %v - currentLimit: %v\n", p, runtime.NumGoroutine(), currentLimit)
 }
 
 func main() {

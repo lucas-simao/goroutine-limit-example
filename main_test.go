@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestMain(t *testing.T) {
@@ -62,7 +63,9 @@ func TestMain(t *testing.T) {
 
 			handler := http.HandlerFunc(handlerFunc)
 
+			startTime := time.Now()
 			handler.ServeHTTP(rr, req)
+			endTime := time.Since(startTime).Seconds()
 
 			os.Stdout = old
 
@@ -90,7 +93,10 @@ func TestMain(t *testing.T) {
 
 			if !exist {
 				t.Errorf("expect contains: %s, but don't find", test.expect)
+				return
 			}
+
+			fmt.Printf("%s finished: %v\n", name, endTime)
 		})
 	}
 }
