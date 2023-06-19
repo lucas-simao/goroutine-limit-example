@@ -40,7 +40,7 @@ func init() {
 }
 
 func process(p People) {
-	fmt.Printf("People is: %+v: Total goroutine: %v Size limit: %v\n", People{Name: p.Name, Age: p.Age}, runtime.NumGoroutine(), currentLimit)
+	fmt.Printf("People is: %+v: Total goroutine: %v Size limit: %v\n", p, runtime.NumGoroutine(), currentLimit)
 	atomic.AddInt32(&currentLimit, -1)
 	p.wg.Done()
 }
