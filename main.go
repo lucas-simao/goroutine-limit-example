@@ -21,10 +21,6 @@ var (
 	channelReadPeople = make(chan struct{}, channelLimit)
 )
 
-func process(p People) {
-	fmt.Printf("People is: %+v: Total goroutine: %v\n", p, runtime.NumGoroutine())
-}
-
 func main() {
 	http.HandleFunc("/", handlerFunc)
 
@@ -55,9 +51,17 @@ func handlerFunc(w http.ResponseWriter, r *http.Request) {
 
 	start := time.Now()
 
+	process(value, name)
+
+	w.WriteHeader(201)
+
+	fmt.Fprintf(w, "Time used to process %v is %vs", value, time.Since(start).Seconds())
+}
+
+func process(n int, name string) {
 	var wg = sync.WaitGroup{}
 
-	for i := 0; i < value; i++ {
+	for i := 0; i < n; i++ {
 		wg.Add(1)
 
 		channelReadPeople <- struct{}{}
@@ -65,14 +69,11 @@ func handlerFunc(w http.ResponseWriter, r *http.Request) {
 		go func(i int) {
 			defer wg.Done()
 
-			process(People{Name: name, Age: i})
+			fmt.Printf("People is: %+v: Total goroutine: %v\n", People{name, i}, runtime.NumGoroutine())
+
 			<-channelReadPeople
 		}(i)
 	}
 
 	wg.Wait()
-
-	w.WriteHeader(201)
-
-	fmt.Fprintf(w, "Time used to process %v is %vs", value, time.Since(start).Seconds())
 }
