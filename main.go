@@ -7,40 +7,22 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
 type People struct {
 	Name string
 	Age  int
-	wg   *sync.WaitGroup
 }
+
+const channelLimit int = 50
 
 var (
-	channelLimit      int = 100
-	channelReadPeople     = make(chan People)
-	currentLimit      int32
+	channelReadPeople = make(chan struct{}, channelLimit)
 )
 
-func init() {
-	go func() {
-		for {
-			if int(currentLimit) < channelLimit {
-				var v = <-channelReadPeople
-				go process(v)
-			}
-		}
-	}()
-}
-
 func process(p People) {
-	atomic.AddInt32(&currentLimit, 1)
-	defer func() {
-		atomic.AddInt32(&currentLimit, -1)
-		p.wg.Done()
-	}()
-	fmt.Printf("People is: %+v: Total goroutine: %v - currentLimit: %v\n", p, runtime.NumGoroutine(), currentLimit)
+	fmt.Printf("People is: %+v: Total goroutine: %v\n", p, runtime.NumGoroutine())
 }
 
 func main() {
@@ -57,8 +39,6 @@ func handlerFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	start := time.Now()
-
 	value, err := strconv.Atoi(r.FormValue("value"))
 	if err != nil {
 		w.WriteHeader(500)
@@ -73,11 +53,21 @@ func handlerFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	start := time.Now()
+
 	var wg = sync.WaitGroup{}
 
 	for i := 0; i < value; i++ {
 		wg.Add(1)
-		channelReadPeople <- People{Name: name, Age: i, wg: &wg}
+
+		channelReadPeople <- struct{}{}
+
+		go func(i int) {
+			defer wg.Done()
+
+			process(People{Name: name, Age: i})
+			<-channelReadPeople
+		}(i)
 	}
 
 	wg.Wait()
