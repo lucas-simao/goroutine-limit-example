@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -19,35 +20,28 @@ type People struct {
 var (
 	channelLimit      int = 50
 	channelReadPeople     = make(chan People, channelLimit)
+	currentLimit      int32
 )
 
 func init() {
-	var limit int
-
-	var mx = sync.Mutex{}
-
 	go func() {
 		for v := range channelReadPeople {
 		GOLOOP:
-			if limit < channelLimit {
+			if int(currentLimit) < channelLimit {
 				goto BEGIN
 			} else {
 				goto GOLOOP
 			}
 		BEGIN:
-			mx.Lock()
-			limit += 1
-			mx.Unlock()
-			go process(v, &limit, &mx)
+			atomic.AddInt32(&currentLimit, 1)
+			go process(v)
 		}
 	}()
 }
 
-func process(p People, limit *int, mx *sync.Mutex) {
-	fmt.Printf("People is: %+v: Total goroutine: %v Size limit: %v\n", p, runtime.NumGoroutine(), *limit)
-	mx.Lock()
-	defer mx.Unlock()
-	*limit -= 1
+func process(p People) {
+	fmt.Printf("People is: %+v: Total goroutine: %v Size limit: %v\n", People{Name: p.Name, Age: p.Age}, runtime.NumGoroutine(), currentLimit)
+	atomic.AddInt32(&currentLimit, -1)
 	p.wg.Done()
 }
 
